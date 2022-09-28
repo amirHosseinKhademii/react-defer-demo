@@ -2,23 +2,56 @@ import ReactDOM from "react-dom/client";
 import "./index.css";
 import App from "./App";
 
-import { ApolloClient, ApolloProvider, InMemoryCache } from "@apollo/client";
+import {
+  ApolloClient,
+  ApolloLink,
+  ApolloProvider,
+  from,
+  HttpLink,
+  InMemoryCache,
+} from "@apollo/client";
+
+const httpLink = new HttpLink({ uri: "graphql/" });
+
+const deferHandlerLink = new ApolloLink((operation, forward) => {
+  return forward(operation).map((response) => {
+    const res = response as any;
+
+    if (res.path && res.path[0] === "book") {
+      const retObj = {
+        ...response,
+        data: {
+          book: {
+            __typename: "Book",
+            id: 0,
+            title: null,
+            comments: [...response.data?.comments],
+          },
+        },
+      };
+
+      return retObj;
+    }
+
+    return response;
+  });
+});
 
 const client = new ApolloClient({
-  uri: "graphql/",
+  link: from([deferHandlerLink, httpLink]),
   cache: new InMemoryCache({
-    // typePolicies: {
-    //   Query: {
-    //     fields: {
-    //       books: {
-    //         merge(existing, incoming, { mergeObjects }) {
-    //           console.log({ existing, incoming });
-    //           return mergeObjects(existing, incoming);
-    //         },
-    //       },
-    //     },
-    //   },
-    // },
+    typePolicies: {
+      Query: {
+        fields: {
+          book: {
+            merge(existing, incoming, { mergeObjects }) {
+              // console.log({ existing, incoming });
+              return mergeObjects(existing, incoming);
+            },
+          },
+        },
+      },
+    },
   }),
 });
 
