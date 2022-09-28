@@ -7,7 +7,6 @@ export const GetBooks = gql`
       title
       ... on Book @defer {
         comments {
-          body
           id
         }
       }
